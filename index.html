@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Field Ops Request Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f4f6f9;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #032d60;
+            margin-bottom: 20px;
+        }
+        #flowContainer {
+            margin-top: 20px;
+            min-height: 400px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Field Ops Request Flow</h1>
+        <p>Zayo Telecommunications - ServiceNow Integration Demo</p>
+        
+        <div id="flowContainer">
+            <div class="loading">Loading flow...</div>
+        </div>
+    </div>
+
+    <script src="https://zayo--dev.sandbox.lightning.force.com/lightning/lightning.out.js"></script>
+    
+    <script>
+        console.log('Initializing Lightning Out...');
+        
+        $Lightning.use(
+            "c:FlowOutApp",  
+            function() {
+                console.log('✓ Lightning Out initialized!');
+                
+                $Lightning.createComponent(
+                    "lightning:flow",
+                    {
+                        flow: "Field_Ops_Request"
+                    },
+                    "flowContainer",
+                    function(component) {
+                        console.log("✓ Flow component created!");
+                    }
+                );
+            },
+            "https://zayo--dev.sandbox.lightning.force.com"
+        );
+    </script>
+</body>
+</html>
