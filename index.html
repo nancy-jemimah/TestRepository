@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Field Ops Request Flow</title>
     <style>
         body {
@@ -14,47 +15,34 @@
             background: white;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        h1 {
-            color: #032d60;
-            margin-bottom: 20px;
-        }
-        #flowContainer {
-            margin-top: 20px;
-            min-height: 400px;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
+        h1 { color: #032d60; }
+        #flowContainer { margin-top: 20px; min-height: 400px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔧 Field Ops Request Flow</h1>
         <p>Zayo Telecommunications - ServiceNow Integration Demo</p>
-        
-        <div id="flowContainer">
-            <div class="loading">Loading flow...</div>
-        </div>
+        <div id="flowContainer">Loading flow...</div>
     </div>
 
     <script src="https://zayo--dev.sandbox.lightning.force.com/lightning/lightning.out.js"></script>
     
     <script>
-        console.log('Initializing Lightning Out...');
+        console.log('Using built-in Flow Runtime App...');
         
+        // Use Salesforce's built-in app instead of custom
         $Lightning.use(
-            "c:FlowOutApp",  
+            "runtime_flows:lightningOutRunner",  // Built-in Salesforce app
             function() {
-                console.log('✓ Lightning Out initialized!');
+                console.log('✓ Runtime app initialized!');
                 
                 $Lightning.createComponent(
-                    "lightning:flow",
+                    "runtime_flows:flowRuntimeForLightningOut",  // Built-in flow component
                     {
-                        flow: "Field_Ops_Request"
+                        flowDevName: "Field_Ops_Request",
+                        flowInputVariables: []
                     },
                     "flowContainer",
                     function(component) {
