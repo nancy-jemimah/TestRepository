@@ -27,30 +27,29 @@
         <div id="flowContainer">Loading flow...</div>
     </div>
 
-    <script src="https://zayo--dev.sandbox.lightning.force.com/lightning/lightning.out.js"></script>
+    <!-- UPDATED: Use My Domain URL -->
+    <script src="https://zayo--dev.sandbox.my.salesforce.com/lightning/lightning.out.js"></script>
     
     <script>
-        console.log('Using built-in Flow Runtime App...');
+        console.log('Initializing Lightning Out with My Domain...');
         
-        // Use Salesforce's built-in app instead of custom
         $Lightning.use(
-            "runtime_flows:lightningOutRunner",  // Built-in Salesforce app
+            "c:FlowOutApp",
             function() {
-                console.log('✓ Runtime app initialized!');
+                console.log('✓ Lightning Out initialized!');
                 
                 $Lightning.createComponent(
-                    "runtime_flows:flowRuntimeForLightningOut",  // Built-in flow component
+                    "lightning:flow",
                     {
-                        flowDevName: "Field_Ops_Request",
-                        flowInputVariables: []
+                        flow: "Field_Ops_Request"
                     },
                     "flowContainer",
                     function(component) {
-                        console.log("✓ Flow component created!");
+                        console.log("✓ Flow created!");
                     }
                 );
             },
-            "https://zayo--dev.sandbox.lightning.force.com"
+            "https://zayo--dev.sandbox.my.salesforce.com"  // UPDATED to My Domain
         );
     </script>
 </body>
