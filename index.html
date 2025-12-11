@@ -174,7 +174,7 @@
             showLoading('Getting frontdoor URL...');
             
             try {
-                // Get frontdoor URL
+                // Step 1: Get frontdoor URL
                 const response = await fetch(
                     `${CONFIG.instanceUrl}/services/oauth2/lightningoutsingleaccess`,
                     {
@@ -192,48 +192,59 @@
                 if (!response.ok) {
                     const text = await response.text();
                     console.error('Frontdoor error:', text);
-                    throw new Error(`HTTP ${response.status}: ${text}`);
+                    throw new Error(`Frontdoor failed: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                console.log('Frontdoor data:', data);
+                console.log('✓ Frontdoor URL received:', data.frontdoor_uri);
                 
-                showLoading('Loading Lightning Out app...');
+                showLoading('Initializing Lightning Out application...');
                 
-                // Create Lightning Out application element
-                const appElement = document.createElement('lightning-out-application');
-                appElement.id = 'loApp';
-                appElement.setAttribute('components', 'c-flow-wrapper');
-                appElement.setAttribute('frontdoor-url', data.frontdoor_uri);
+                // Step 2: Create the iframe to load the frontdoor URL
+                // This establishes the authenticated session
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = data.frontdoor_uri;
+                document.body.appendChild(iframe);
                 
-                // Add event listeners
-                appElement.addEventListener('lo.application.ready', () => {
-                    console.log('✓ App ready!');
+                // Step 3: Wait for iframe to load, then create Lightning Out app
+                iframe.onload = function() {
+                    console.log('✓ Frontdoor loaded, creating Lightning Out app...');
                     
-                    // Create the flow wrapper component
-                    const flowComponent = document.createElement('c-flow-wrapper');
-                    flowComponent.setAttribute('flow-api-name', 'Field_Ops_Request');
-                    appContainer.appendChild(flowComponent);
+                    // Create the Lightning Out application container
+                    appContainer.innerHTML = `
+                        <lightning-out-application 
+                            id="loApp"
+                            components="c-flow-wrapper"
+                            frontdoor-url="${data.frontdoor_uri}">
+                        </lightning-out-application>
+                    `;
                     
-                    updateStatus('✅ Flow loaded!', 'success');
-                });
-                
-                appElement.addEventListener('lo.application.error', (e) => {
-                    console.error('App error:', e.detail);
-                    updateStatus(`❌ ${e.detail.message}`, 'error');
-                });
-                
-                appContainer.appendChild(appElement);
-                
-                // Load Lightning Out script
-                const script = document.createElement('script');
-                script.src = `${CONFIG.instanceUrl}/lightning-out/lightning-out-2.0.js`;
-                script.onload = () => console.log('✓ Lightning Out script loaded');
-                script.onerror = () => {
-                    console.error('Failed to load script');
-                    updateStatus('❌ Failed to load Lightning Out script', 'error');
+                    const loApp = document.getElementById('loApp');
+                    
+                    // Listen for application ready event
+                    loApp.addEventListener('lo.application.ready', function() {
+                        console.log('✓ Lightning Out application ready!');
+                        
+                        // Create the actual component
+                        const flowWrapper = document.createElement('c-flow-wrapper');
+                        flowWrapper.setAttribute('flow-api-name', 'Field_Ops_Request');
+                        appContainer.appendChild(flowWrapper);
+                        
+                        updateStatus('✅ Flow loaded successfully!', 'success');
+                    });
+                    
+                    // Listen for errors
+                    loApp.addEventListener('lo.application.error', function(e) {
+                        console.error('❌ Lightning Out error:', e.detail);
+                        updateStatus(`❌ Error: ${e.detail.message}`, 'error');
+                    });
                 };
-                document.body.appendChild(script);
+                
+                iframe.onerror = function() {
+                    console.error('❌ Failed to load frontdoor URL');
+                    updateStatus('❌ Failed to establish authenticated session', 'error');
+                };
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -246,3 +257,4 @@
     </script>
 </body>
 </html>
+✅ Flow loaded successfully!
