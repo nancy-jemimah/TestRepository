@@ -83,10 +83,6 @@
         #appContainer {
             margin-top: 30px;
             min-height: 400px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            background: #fafafa;
         }
         
         .spinner {
@@ -116,9 +112,6 @@
         <div id="appContainer"></div>
     </div>
 
-    <!-- Lightning Out 1.0 Script -->
-    <script src="https://zayo--dev.sandbox.my.salesforce.com/lightning/lightning.out.js"></script>
-    
     <script>
         console.log('=== Script Started ===');
         
@@ -126,8 +119,7 @@
             instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
             clientId: '3MVG9u5bid8bKNSJuHRl8Wv7D2P_lUn3aBy0T3.j91TqxL6J1nPbttbYlj3fgtC2qKmw_G821FMQRdpuSYzRl',
             redirectUri: 'https://nancy-jemimah.github.io/TestRepository/',
-            appName: 'c:flowWrapperApp',
-            componentName: 'c:flowWrapperAura'  // Changed to Aura component
+            lightningOutAppId: '1UsVZ000000018z0AA'
         };
 
         const statusDiv = document.getElementById('status');
@@ -172,60 +164,81 @@
             
             const params = new URLSearchParams(hash);
             const accessToken = params.get('access_token');
-            const instanceUrl = params.get('instance_url') || CONFIG.instanceUrl;
             
             if (!accessToken) {
-                updateStatus('❌ No access token received', 'error');
+                updateStatus('❌ No access token', 'error');
                 return;
             }
             
             console.log('✓ Access token received');
-            showLoading('Loading Lightning Out...');
+            showLoading('Getting frontdoor URL...');
             
-            const checkLightning = setInterval(() => {
-                if (typeof $Lightning !== 'undefined') {
-                    clearInterval(checkLightning);
-                    initializeLightningOut(instanceUrl, accessToken);
+            try {
+                // Get frontdoor URL
+                const response = await fetch(
+                    `${CONFIG.instanceUrl}/services/oauth2/lightningoutsingleaccess`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            access_token: accessToken,
+                            lightning_out_app_id: CONFIG.lightningOutAppId
+                        })
+                    }
+                );
+                
+                console.log('Frontdoor response:', response.status);
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Frontdoor error:', text);
+                    throw new Error(`HTTP ${response.status}: ${text}`);
                 }
-            }, 100);
-            
-            setTimeout(() => {
-                clearInterval(checkLightning);
-                if (typeof $Lightning === 'undefined') {
-                    updateStatus('❌ Lightning Out script failed to load', 'error');
-                }
-            }, 10000);
-        }
-
-        function initializeLightningOut(instanceUrl, accessToken) {
-            console.log('=== Initializing Lightning Out ===');
-            
-            $Lightning.use(
-                CONFIG.appName,
-                function() {
-                    console.log('✓ App loaded');
-                    showLoading('Creating component...');
+                
+                const data = await response.json();
+                console.log('Frontdoor data:', data);
+                
+                showLoading('Loading Lightning Out app...');
+                
+                // Create Lightning Out application element
+                const appElement = document.createElement('lightning-out-application');
+                appElement.id = 'loApp';
+                appElement.setAttribute('components', 'c-flow-wrapper');
+                appElement.setAttribute('frontdoor-url', data.frontdoor_uri);
+                
+                // Add event listeners
+                appElement.addEventListener('lo.application.ready', () => {
+                    console.log('✓ App ready!');
                     
-                    $Lightning.createComponent(
-                        CONFIG.componentName,
-                        { flowApiName: 'Field_Ops_Request' },
-                        'appContainer',
-                        function(component) {
-                            console.log('✓ Component created!');
-                            updateStatus('✅ Flow loaded!', 'success');
-                            
-                            // Start the flow
-                            component.init();
-                        }
-                    );
-                },
-                instanceUrl,
-                accessToken,
-                function(error) {
-                    console.error('❌ Error:', error);
-                    updateStatus(`❌ Error: ${error}`, 'error');
-                }
-            );
+                    // Create the flow wrapper component
+                    const flowComponent = document.createElement('c-flow-wrapper');
+                    flowComponent.setAttribute('flow-api-name', 'Field_Ops_Request');
+                    appContainer.appendChild(flowComponent);
+                    
+                    updateStatus('✅ Flow loaded!', 'success');
+                });
+                
+                appElement.addEventListener('lo.application.error', (e) => {
+                    console.error('App error:', e.detail);
+                    updateStatus(`❌ ${e.detail.message}`, 'error');
+                });
+                
+                appContainer.appendChild(appElement);
+                
+                // Load Lightning Out script
+                const script = document.createElement('script');
+                script.src = `${CONFIG.instanceUrl}/lightning-out/lightning-out-2.0.js`;
+                script.onload = () => console.log('✓ Lightning Out script loaded');
+                script.onerror = () => {
+                    console.error('Failed to load script');
+                    updateStatus('❌ Failed to load Lightning Out script', 'error');
+                };
+                document.body.appendChild(script);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                updateStatus(`❌ ${error.message}`, 'error');
+            }
         }
 
         console.log('=== Page Ready ===');
