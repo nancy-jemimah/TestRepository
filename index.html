@@ -80,13 +80,13 @@
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
         
-        .login-btn:active {
-            transform: translateY(0);
-        }
-        
         #appContainer {
             margin-top: 30px;
             min-height: 400px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
         }
         
         .spinner {
@@ -116,148 +116,5 @@
         <div id="appContainer"></div>
     </div>
 
-    <script>
-        console.log('=== Script Started ===');
-        
-        // Configuration
-        const CONFIG = {
-            instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
-            clientId: '3MVG9u5bid8bKNSJuHRl8Wv7D2P_lUn3aBy0T3.j91TqxL6J1nPbttbYlj3fgtC2qKmw_G821FMQRdpuSYzRl',
-            redirectUri: 'https://nancy-jemimah.github.io/TestRepository/',
-            lightningOutAppId: '1UsVZ000000018z0AA'
-        };
-
-        const statusDiv = document.getElementById('status');
-        const loginBtn = document.getElementById('loginBtn');
-        const appContainer = document.getElementById('appContainer');
-
-        function updateStatus(message, type = 'info') {
-            statusDiv.textContent = message;
-            statusDiv.className = '';
-            if (type === 'error') statusDiv.classList.add('error');
-            if (type === 'success') statusDiv.classList.add('success');
-            console.log(`[${type}]`, message);
-        }
-
-        function showLoading(message) {
-            statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
-        }
-
-        // Test button click
-        loginBtn.addEventListener('click', function() {
-            console.log('=== Button Clicked! ===');
-            alert('Button clicked! Check console.');
-            
-            console.log('Client ID:', CONFIG.clientId);
-            console.log('Redirect URI:', CONFIG.redirectUri);
-            
-            showLoading('Redirecting to Salesforce...');
-            
-            const authUrl = `${CONFIG.instanceUrl}/services/oauth2/authorize?` +
-                `client_id=${encodeURIComponent(CONFIG.clientId)}&` +
-                `redirect_uri=${encodeURIComponent(CONFIG.redirectUri)}&` +
-                `response_type=token&` +
-                `scope=full`;
-            
-            console.log('OAuth URL:', authUrl);
-            
-            // Redirect to Salesforce
-            setTimeout(() => {
-                window.location.href = authUrl;
-            }, 500);
-        });
-
-        // Handle OAuth callback
-        async function handleOAuthCallback() {
-            const hash = window.location.hash.substring(1);
-            
-            if (!hash) {
-                console.log('No OAuth callback');
-                return;
-            }
-            
-            console.log('=== OAuth Callback Detected ===');
-            loginBtn.style.display = 'none';
-            
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-            
-            if (!accessToken) {
-                updateStatus('❌ No access token received', 'error');
-                return;
-            }
-            
-            console.log('✓ Access token received');
-            showLoading('Getting frontdoor URL...');
-            
-            try {
-                const response = await fetch(
-                    `${CONFIG.instanceUrl}/services/oauth2/lightningoutsingleaccess`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            access_token: accessToken,
-                            lightning_out_app_id: CONFIG.lightningOutAppId
-                        })
-                    }
-                );
-                
-                console.log('Frontdoor response:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('Frontdoor data:', data);
-                
-                showLoading('Loading Lightning Out app...');
-                
-                // Load Lightning Out script dynamically
-                const script = document.createElement('script');
-                script.src = `${CONFIG.instanceUrl}/lightning-out/lightning-out-2.0.js`;
-                script.onload = () => {
-                    console.log('✓ Lightning Out script loaded');
-                    initLightningOut(data.frontdoor_uri);
-                };
-                script.onerror = () => {
-                    updateStatus('❌ Failed to load Lightning Out script', 'error');
-                };
-                document.body.appendChild(script);
-                
-            } catch (error) {
-                console.error('Error:', error);
-                updateStatus(`❌ Error: ${error.message}`, 'error');
-            }
-        }
-
-        function initLightningOut(frontdoorUrl) {
-            appContainer.innerHTML = `
-                <lightning-out-application 
-                    id="app"
-                    components="c-flow-wrapper"
-                    frontdoor-url="${frontdoorUrl}">
-                </lightning-out-application>
-                <c-flow-wrapper flow-api-name="Field_Ops_Request"></c-flow-wrapper>
-            `;
-            
-            const app = document.getElementById('app');
-            app.addEventListener('lo.application.ready', () => {
-                console.log('✓ App ready!');
-                updateStatus('✅ Flow loaded successfully!', 'success');
-            });
-            
-            app.addEventListener('lo.application.error', (e) => {
-                console.error('App error:', e.detail);
-                updateStatus(`❌ ${e.detail.message}`, 'error');
-            });
-        }
-
-        // Initialize
-        console.log('=== Page Ready ===');
-        console.log('Button element:', loginBtn);
-        handleOAuthCallback();
-    </script>
-</body>
-</html>
+    <!-- Lightning Out 1.0 Script -->
+    <script src="https://zayo--dev.sandbox.my.salesf
