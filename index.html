@@ -1,274 +1,154 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Field Ops Request Flow - Zayo</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Salesforce Sans', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        
-        h1 {
-            color: #032d60;
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 16px;
-            margin-bottom: 30px;
-        }
-        
-        #status {
-            padding: 20px;
-            background: #f0f4ff;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #667eea;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        
-        #status.error {
-            background: #fff5f5;
-            border-color: #fc8181;
-            color: #c53030;
-        }
-        
-        #status.success {
-            background: #f0fff4;
-            border-color: #48bb78;
-            color: #22543d;
-        }
-        
-        .login-btn {
-            background: #032d60;
-            color: white;
-            padding: 15px 40px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .login-btn:hover {
-            background: #024591;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        }
-        
-        #appContainer {
-            margin-top: 30px;
-        }
-        
-        /* CRITICAL: Force iframe to have specific height - Henry's fix */
-        lightning-out-application {
-            display: block;
-            width: 100%;
-        }
-        
-        lightning-out-application iframe {
-            height: 1200px !important;
-            width: 100% !important;
-            border: 0 !important;
-        }
-        
-        c-flow-wrapper {
-            display: block;
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(0,0,0,.1);
-            border-radius: 50%;
-            border-top-color: #032d60;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔧 Field Ops Request Flow</h1>
-        <p class="subtitle">Zayo Telecommunications - ServiceNow Integration Demo</p>
-        
-        <div id="status">Ready to authenticate with Salesforce</div>
-        
-        <button id="loginBtn" class="login-btn">Login to Salesforce</button>
-        
-        <h2 style="margin-top: 30px; color: #032d60;">Lightning Component Below:</h2>
-        
-        <div id="appContainer"></div>
-    </div>
+<script>
+    console.log('=== Page Loaded ===');
+    
+    const CONFIG = {
+        instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
+        clientId: '3MVG9u5bid8bKNSJuHRl8Wv7D2P_lUn3aBy0T3.j91TqxL6J1nPbttbYlj3fgtC2qKmw_G821FMQRdpuSYzRl',
+        redirectUri: 'https://nancy-jemimah.github.io/TestRepository/',
+        lightningOutAppId: '1UsVZ000000018z0AA'
+    };
 
-    <script>
-        console.log('=== Page Loaded ===');
+    const statusDiv = document.getElementById('status');
+    const loginBtn = document.getElementById('loginBtn');
+    const appContainer = document.getElementById('appContainer');
+
+    function updateStatus(message, type = 'info') {
+        statusDiv.textContent = message;
+        statusDiv.className = '';
+        if (type === 'error') statusDiv.classList.add('error');
+        if (type === 'success') statusDiv.classList.add('success');
+        console.log(`[${type.toUpperCase()}]`, message);
+    }
+
+    function showLoading(message) {
+        statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
+    }
+
+    loginBtn.addEventListener('click', function() {
+        console.log('=== Starting OAuth ===');
+        showLoading('Redirecting to Salesforce...');
         
-        const CONFIG = {
-            instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
-            clientId: '3MVG9u5bid8bKNSJuHRl8Wv7D2P_lUn3aBy0T3.j91TqxL6J1nPbttbYlj3fgtC2qKmw_G821FMQRdpuSYzRl',
-            redirectUri: 'https://nancy-jemimah.github.io/TestRepository/',
-            lightningOutAppId: '1UsVZ000000018z0AA'
-        };
+        const authUrl = `${CONFIG.instanceUrl}/services/oauth2/authorize?` +
+            `client_id=${encodeURIComponent(CONFIG.clientId)}&` +
+            `redirect_uri=${encodeURIComponent(CONFIG.redirectUri)}&` +
+            `response_type=token&` +
+            `scope=full`;
+        
+        window.location.href = authUrl;
+    });
 
-        const statusDiv = document.getElementById('status');
-        const loginBtn = document.getElementById('loginBtn');
-        const appContainer = document.getElementById('appContainer');
-
-        function updateStatus(message, type = 'info') {
-            statusDiv.textContent = message;
-            statusDiv.className = '';
-            if (type === 'error') statusDiv.classList.add('error');
-            if (type === 'success') statusDiv.classList.add('success');
-            console.log(`[${type.toUpperCase()}]`, message);
+    async function handleOAuthCallback() {
+        const hash = window.location.hash.substring(1);
+        
+        if (!hash) {
+            console.log('No OAuth callback');
+            return;
         }
-
-        function showLoading(message) {
-            statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
+        
+        console.log('=== OAuth Callback Detected ===');
+        loginBtn.style.display = 'none';
+        
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        
+        if (!accessToken) {
+            updateStatus('❌ No access token', 'error');
+            return;
         }
-
-        loginBtn.addEventListener('click', function() {
-            console.log('=== Starting OAuth ===');
-            showLoading('Redirecting to Salesforce...');
-            
-            const authUrl = `${CONFIG.instanceUrl}/services/oauth2/authorize?` +
-                `client_id=${encodeURIComponent(CONFIG.clientId)}&` +
-                `redirect_uri=${encodeURIComponent(CONFIG.redirectUri)}&` +
-                `response_type=token&` +
-                `scope=full`;
-            
-            window.location.href = authUrl;
-        });
-
-        async function handleOAuthCallback() {
-            const hash = window.location.hash.substring(1);
-            
-            if (!hash) {
-                console.log('No OAuth callback');
-                return;
-            }
-            
-            console.log('=== OAuth Callback Detected ===');
-            loginBtn.style.display = 'none';
-            
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-            
-            if (!accessToken) {
-                updateStatus('❌ No access token', 'error');
-                return;
-            }
-            
-            console.log('✓ Access token received');
-            showLoading('Getting frontdoor URL...');
-            
-            try {
-                const response = await fetch(
-                    `${CONFIG.instanceUrl}/services/oauth2/lightningoutsingleaccess`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            access_token: accessToken,
-                            lightning_out_app_id: CONFIG.lightningOutAppId
-                        })
-                    }
-                );
-                
-                console.log('Frontdoor response:', response.status);
-                
-                if (!response.ok) {
-                    const text = await response.text();
-                    console.error('Frontdoor error:', text);
-                    throw new Error(`HTTP ${response.status}`);
+        
+        console.log('✓ Access token received');
+        showLoading('Getting frontdoor URL...');
+        
+        try {
+            const response = await fetch(
+                `${CONFIG.instanceUrl}/services/oauth2/lightningoutsingleaccess`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        access_token: accessToken,
+                        lightning_out_app_id: CONFIG.lightningOutAppId
+                    })
                 }
+            );
+            
+            console.log('Frontdoor response:', response.status);
+            
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('Frontdoor error:', text);
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('✓ Frontdoor URL received');
+            
+            updateStatus('✓ Authenticated', 'success');
+            showLoading('Loading flow...');
+            
+            // Create Lightning Out application
+            appContainer.innerHTML = `
+                <lightning-out-application 
+                    id="loApp"
+                    components="c-flow-wrapper"
+                    frontdoor-url="${data.frontdoor_uri}">
+                </lightning-out-application>
+                <c-flow-wrapper flow-api-name="Field_Ops_Request"></c-flow-wrapper>
+            `;
+            
+            console.log('✓ Lightning Out elements created');
+            console.log('appContainer HTML:', appContainer.innerHTML);
+            
+            // Check multiple times for iframe
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+                checkCount++;
+                console.log(`Checking for iframe (attempt ${checkCount})...`);
                 
-                const data = await response.json();
-                console.log('✓ Frontdoor URL received');
-                
-                updateStatus('✓ Authenticated', 'success');
-                showLoading('Loading flow...');
-                
-                // Create Lightning Out application
-                appContainer.innerHTML = `
-                    <lightning-out-application 
-                        id="loApp"
-                        components="c-flow-wrapper"
-                        frontdoor-url="${data.frontdoor_uri}">
-                    </lightning-out-application>
-                    <c-flow-wrapper flow-api-name="Field_Ops_Request"></c-flow-wrapper>
-                `;
-                
-                console.log('✓ Lightning Out elements created');
-                
-                // Henry's fix: Set specific iframe height
-                setTimeout(() => {
-                    const iframe = document.querySelector('lightning-out-application iframe');
-                    if (iframe) {
-                        console.log('✓ Found iframe, setting height to 1200px');
-                        iframe.style.height = '1200px';
-                        iframe.style.width = '100%';
-                        
-                        // Monitor and re-apply if Salesforce tries to change it
-                        const observer = new MutationObserver(() => {
-                            if (iframe.style.height !== '1200px') {
-                                console.log('Iframe height changed, resetting to 1200px');
-                                iframe.style.height = '1200px';
-                            }
-                        });
-                        
-                        observer.observe(iframe, { attributes: true, attributeFilter: ['style'] });
-                    }
-                }, 1000);
-                
+                const iframe = document.querySelector('lightning-out-application iframe');
                 const loApp = document.getElementById('loApp');
+                const flowWrapper = document.querySelector('c-flow-wrapper');
                 
+                console.log('- loApp element:', loApp);
+                console.log('- c-flow-wrapper element:', flowWrapper);
+                console.log('- iframe element:', iframe);
+                
+                if (iframe) {
+                    console.log('✓ Found iframe!');
+                    console.log('Iframe current height:', iframe.style.height);
+                    iframe.style.height = '1200px';
+                    iframe.style.width = '100%';
+                    console.log('Iframe height set to 1200px');
+                    clearInterval(checkInterval);
+                    updateStatus('✅ Flow loaded!', 'success');
+                } else if (checkCount >= 20) {
+                    console.error('❌ Iframe not found after 20 attempts (10 seconds)');
+                    console.log('This likely means the component is not rendering');
+                    clearInterval(checkInterval);
+                    updateStatus('❌ Component failed to load', 'error');
+                }
+            }, 500);
+            
+            const loApp = document.getElementById('loApp');
+            
+            if (loApp) {
                 loApp.addEventListener('lo.application.ready', function(e) {
-                    console.log('✓ Application ready');
-                    updateStatus('✅ Flow loaded successfully!', 'success');
+                    console.log('✓✓✓ lo.application.ready event fired!', e);
+                    updateStatus('✅ Application ready!', 'success');
                 });
                 
                 loApp.addEventListener('lo.application.error', function(e) {
-                    console.error('❌ Error:', e.detail);
+                    console.error('❌ lo.application.error:', e.detail);
                     updateStatus(`❌ Error: ${e.detail.message}`, 'error');
                 });
-                
-            } catch (error) {
-                console.error('Error:', error);
-                updateStatus(`❌ ${error.message}`, 'error');
             }
+            
+        } catch (error) {
+            console.error('Error:', error);
+            updateStatus(`❌ ${error.message}`, 'error');
         }
+    }
 
-        console.log('=== Page Ready ===');
-        handleOAuthCallback();
-    </script>
-</body>
-</html>
+    console.log('=== Page Ready ===');
+    handleOAuthCallback();
+</script>
