@@ -117,4 +117,119 @@
     </div>
 
     <!-- Lightning Out 1.0 Script -->
-    <script src="https://zayo--dev.sandbox.my.salesf
+    <script src="https://zayo--dev.sandbox.my.salesforce.com/lightning/lightning.out.js"></script>
+    
+    <script>
+        console.log('=== Script Started ===');
+        
+        const CONFIG = {
+            instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
+            clientId: '3MVG9u5bid8bKNSJuHRl8Wv7D2P_lUn3aBy0T3.j91TqxL6J1nPbttbYlj3fgtC2qKmw_G821FMQRdpuSYzRl',
+            redirectUri: 'https://nancy-jemimah.github.io/TestRepository/',
+            appName: 'c:flowWrapperApp',
+            componentName: 'c:flowWrapperAura'  // Changed to Aura component
+        };
+
+        const statusDiv = document.getElementById('status');
+        const loginBtn = document.getElementById('loginBtn');
+        const appContainer = document.getElementById('appContainer');
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = '';
+            if (type === 'error') statusDiv.classList.add('error');
+            if (type === 'success') statusDiv.classList.add('success');
+            console.log(`[${type}]`, message);
+        }
+
+        function showLoading(message) {
+            statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
+        }
+
+        loginBtn.addEventListener('click', function() {
+            console.log('=== Starting OAuth ===');
+            showLoading('Redirecting to Salesforce...');
+            
+            const authUrl = `${CONFIG.instanceUrl}/services/oauth2/authorize?` +
+                `client_id=${encodeURIComponent(CONFIG.clientId)}&` +
+                `redirect_uri=${encodeURIComponent(CONFIG.redirectUri)}&` +
+                `response_type=token&` +
+                `scope=full`;
+            
+            window.location.href = authUrl;
+        });
+
+        async function handleOAuthCallback() {
+            const hash = window.location.hash.substring(1);
+            
+            if (!hash) {
+                console.log('No OAuth callback');
+                return;
+            }
+            
+            console.log('=== OAuth Callback Detected ===');
+            loginBtn.style.display = 'none';
+            
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            const instanceUrl = params.get('instance_url') || CONFIG.instanceUrl;
+            
+            if (!accessToken) {
+                updateStatus('❌ No access token received', 'error');
+                return;
+            }
+            
+            console.log('✓ Access token received');
+            showLoading('Loading Lightning Out...');
+            
+            const checkLightning = setInterval(() => {
+                if (typeof $Lightning !== 'undefined') {
+                    clearInterval(checkLightning);
+                    initializeLightningOut(instanceUrl, accessToken);
+                }
+            }, 100);
+            
+            setTimeout(() => {
+                clearInterval(checkLightning);
+                if (typeof $Lightning === 'undefined') {
+                    updateStatus('❌ Lightning Out script failed to load', 'error');
+                }
+            }, 10000);
+        }
+
+        function initializeLightningOut(instanceUrl, accessToken) {
+            console.log('=== Initializing Lightning Out ===');
+            
+            $Lightning.use(
+                CONFIG.appName,
+                function() {
+                    console.log('✓ App loaded');
+                    showLoading('Creating component...');
+                    
+                    $Lightning.createComponent(
+                        CONFIG.componentName,
+                        { flowApiName: 'Field_Ops_Request' },
+                        'appContainer',
+                        function(component) {
+                            console.log('✓ Component created!');
+                            updateStatus('✅ Flow loaded!', 'success');
+                            
+                            // Start the flow
+                            component.init();
+                        }
+                    );
+                },
+                instanceUrl,
+                accessToken,
+                function(error) {
+                    console.error('❌ Error:', error);
+                    updateStatus(`❌ Error: ${error}`, 'error');
+                }
+            );
+        }
+
+        console.log('=== Page Ready ===');
+        handleOAuthCallback();
+    </script>
+</body>
+</html>
