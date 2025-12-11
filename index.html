@@ -2,55 +2,165 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Field Ops Request Flow</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field Ops Request Flow - Zayo</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background: #f4f6f9;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
+        body {
+            font-family: 'Salesforce Sans', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
-            padding: 30px;
-            border-radius: 8px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
         }
-        h1 { color: #032d60; }
-        #flowContainer { margin-top: 20px; min-height: 400px; }
+        
+        .header {
+            background: #032d60;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        #flowContainer {
+            min-height: 500px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 Field Ops Request Flow</h1>
-        <p>Zayo Telecommunications - ServiceNow Integration Demo</p>
-        <div id="flowContainer">Loading flow...</div>
+        <div class="header">
+            <h1>🔧 Field Ops Request Flow</h1>
+            <p>Zayo Telecommunications - ServiceNow Integration Demo</p>
+        </div>
+        
+        <div class="content">
+            <div id="status" class="status">Initializing Lightning Out...</div>
+            <div id="flowContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading Salesforce flow...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- UPDATED: Use My Domain URL -->
+    <!-- Lightning Out Script -->
     <script src="https://zayo--dev.sandbox.my.salesforce.com/lightning/lightning.out.js"></script>
     
     <script>
-        console.log('Initializing Lightning Out with My Domain...');
+        const status = document.getElementById('status');
         
+        console.log('=== Lightning Out Initialization Starting ===');
+        status.innerHTML = 'Step 1: Loading Lightning Out framework...';
+        
+        // Configuration
+        const SALESFORCE_URL = "https://zayo--dev.sandbox.my.salesforce.com";
+        const APP_NAME = "c:FlowWrapperApp";
+        const COMPONENT_NAME = "c:flowWrapper";
+        
+        // Initialize Lightning Out
         $Lightning.use(
-            "c:FlowOutApp",
+            APP_NAME,
             function() {
-                console.log('✓ Lightning Out initialized!');
+                console.log('✓ Lightning Out App initialized');
+                status.innerHTML = 'Step 2: Lightning Out initialized. Creating flow component...';
                 
+                // Create the LWC component
                 $Lightning.createComponent(
-                    "lightning:flow",
+                    COMPONENT_NAME,
                     {
-                        flow: "Field_Ops_Request"
+                        flowApiName: "Field_Ops_Request"
                     },
                     "flowContainer",
                     function(component) {
-                        console.log("✓ Flow created!");
+                        console.log('✓ Flow component created successfully!');
+                        status.innerHTML = 'Step 3: Flow loaded successfully!';
+                        status.style.color = '#28a745';
+                        
+                        // Listen for flow completion
+                        component.addEventHandler("flowcomplete", function(event) {
+                            console.log("Flow completed!", event.getParam('outputVariables'));
+                            alert("Flow completed successfully!");
+                        });
                     }
                 );
             },
-            "https://zayo--dev.sandbox.my.salesforce.com"  // UPDATED to My Domain
+            SALESFORCE_URL
         );
+        
+        // Error handling
+        window.addEventListener('error', function(e) {
+            console.error('Error occurred:', e.message);
+            status.innerHTML = 'Error: ' + e.message;
+            status.style.color = '#dc3545';
+            document.getElementById('flowContainer').innerHTML = 
+                '<div class="error"><strong>Error loading flow:</strong> ' + e.message + '</div>';
+        });
     </script>
 </body>
 </html>
