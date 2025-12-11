@@ -80,36 +80,24 @@
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
         
-        .debug-info {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-        }
-        
         #appContainer {
             margin-top: 30px;
-            min-height: 600px;
         }
         
-        /* CRITICAL: Force iframe to have proper height */
+        /* CRITICAL: Force iframe to have specific height - Henry's fix */
         lightning-out-application {
             display: block;
-            min-height: 800px;
+            width: 100%;
         }
         
         lightning-out-application iframe {
-            min-height: 800px !important;
-            height: auto !important;
+            height: 1200px !important;
+            width: 100% !important;
+            border: 0 !important;
         }
         
         c-flow-wrapper {
             display: block;
-            min-height: 600px;
         }
         
         .spinner {
@@ -136,8 +124,6 @@
         
         <button id="loginBtn" class="login-btn">Login to Salesforce</button>
         
-        <div id="debugInfo" class="debug-info" style="display:none;"></div>
-        
         <h2 style="margin-top: 30px; color: #032d60;">Lightning Component Below:</h2>
         
         <div id="appContainer"></div>
@@ -156,9 +142,6 @@
         const statusDiv = document.getElementById('status');
         const loginBtn = document.getElementById('loginBtn');
         const appContainer = document.getElementById('appContainer');
-        const debugInfo = document.getElementById('debugInfo');
-        
-        let appReady = false;
 
         function updateStatus(message, type = 'info') {
             statusDiv.textContent = message;
@@ -170,14 +153,6 @@
 
         function showLoading(message) {
             statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
-        }
-        
-        function updateDebugInfo(data) {
-            debugInfo.style.display = 'block';
-            debugInfo.textContent = `Debug Info:
-isAuthenticated: ${!!data.accessToken}
-frontdoorUrl: ${JSON.stringify(data.frontdoorUrl, null, 2)}
-appReady: ${appReady}`;
         }
 
         loginBtn.addEventListener('click', function() {
@@ -237,20 +212,13 @@ appReady: ${appReady}`;
                 }
                 
                 const data = await response.json();
-                console.log('✓ Frontdoor URL received:', data);
-                
-                updateDebugInfo({
-                    accessToken: accessToken,
-                    frontdoorUrl: data
-                });
+                console.log('✓ Frontdoor URL received');
                 
                 updateStatus('✓ Authenticated', 'success');
-                showLoading('Loading Lightning component...');
+                showLoading('Loading flow...');
                 
                 // Create Lightning Out application
                 appContainer.innerHTML = `
-                    <p style="color: #666; margin-bottom: 15px;">this is from salesforce</p>
-                    <h3 style="margin-bottom: 20px; color: #032d60;">Field Ops Request</h3>
                     <lightning-out-application 
                         id="loApp"
                         components="c-flow-wrapper"
@@ -261,18 +229,20 @@ appReady: ${appReady}`;
                 
                 console.log('✓ Lightning Out elements created');
                 
-                // Add iframe height observer
+                // Henry's fix: Set specific iframe height
                 setTimeout(() => {
                     const iframe = document.querySelector('lightning-out-application iframe');
                     if (iframe) {
-                        console.log('Found iframe, forcing height...');
-                        iframe.style.minHeight = '800px';
-                        iframe.style.height = '800px';
+                        console.log('✓ Found iframe, setting height to 1200px');
+                        iframe.style.height = '1200px';
+                        iframe.style.width = '100%';
                         
-                        // Watch for iframe content changes
+                        // Monitor and re-apply if Salesforce tries to change it
                         const observer = new MutationObserver(() => {
-                            iframe.style.minHeight = '800px';
-                            iframe.style.height = '800px';
+                            if (iframe.style.height !== '1200px') {
+                                console.log('Iframe height changed, resetting to 1200px');
+                                iframe.style.height = '1200px';
+                            }
                         });
                         
                         observer.observe(iframe, { attributes: true, attributeFilter: ['style'] });
@@ -282,28 +252,14 @@ appReady: ${appReady}`;
                 const loApp = document.getElementById('loApp');
                 
                 loApp.addEventListener('lo.application.ready', function(e) {
-                    console.log('✓✓✓ lo.application.ready fired!', e);
-                    appReady = true;
-                    updateDebugInfo({
-                        accessToken: accessToken,
-                        frontdoorUrl: data
-                    });
+                    console.log('✓ Application ready');
                     updateStatus('✅ Flow loaded successfully!', 'success');
                 });
                 
                 loApp.addEventListener('lo.application.error', function(e) {
-                    console.error('❌ lo.application.error:', e.detail);
+                    console.error('❌ Error:', e.detail);
                     updateStatus(`❌ Error: ${e.detail.message}`, 'error');
                 });
-                
-                window.addEventListener('message', function(event) {
-                    if (event.data && event.data.type) {
-                        console.log('Window message:', event.data.type, event.data);
-                    }
-                });
-                
-                console.log('✓ Event listeners attached');
-                updateStatus('Component loading...', 'info');
                 
             } catch (error) {
                 console.error('Error:', error);
