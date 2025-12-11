@@ -84,12 +84,6 @@
             transform: translateY(0);
         }
         
-        .login-btn:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
         #appContainer {
             margin-top: 30px;
             min-height: 400px;
@@ -108,10 +102,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -119,80 +109,49 @@
         <h1>🔧 Field Ops Request Flow</h1>
         <p class="subtitle">Zayo Telecommunications - ServiceNow Integration Demo</p>
         
-        <div id="status">
-            Ready to authenticate with Salesforce
-        </div>
+        <div id="status">Ready to authenticate with Salesforce</div>
         
-        <button id="loginBtn" class="login-btn">
-            Login to Salesforce
-        </button>
+        <button id="loginBtn" class="login-btn">Login to Salesforce</button>
         
         <div id="appContainer"></div>
     </div>
 
-    <!-- Lightning Out 2.0 JavaScript Library -->
-    <script src="https://zayo--dev.sandbox.my.salesforce.com/lightning-out/lightning-out-2.0.js"></script>
-    
     <script>
-        // ========================================
-        // CONFIGURATION
-        // ========================================
+        console.log('=== Script Started ===');
+        
+        // Configuration
         const CONFIG = {
-            // Salesforce instance URL
             instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
-            
-            // Consumer Key from External Client App
-            // TODO: Replace with your actual Consumer Key
             clientId: '3MVG9u5bid8bKNSJuHRl8Wv7D2P_lUn3aBy0T3.j91TqxL6J1nPbttbYlj3fgtC2qKmw_G821FMQRdpuSYzRl',
-            
-            // GitHub Pages callback URL (must match External Client App)
             redirectUri: 'https://nancy-jemimah.github.io/TestRepository/',
-            
-            // Lightning Out 2.0 App ID from App Manager
             lightningOutAppId: '1UsVZ000000018z0AA'
         };
 
-        // ========================================
-        // DOM ELEMENTS
-        // ========================================
         const statusDiv = document.getElementById('status');
         const loginBtn = document.getElementById('loginBtn');
         const appContainer = document.getElementById('appContainer');
 
-        // ========================================
-        // UTILITY FUNCTIONS
-        // ========================================
-        
         function updateStatus(message, type = 'info') {
             statusDiv.textContent = message;
             statusDiv.className = '';
-            if (type === 'error') {
-                statusDiv.classList.add('error');
-            } else if (type === 'success') {
-                statusDiv.classList.add('success');
-            }
-            console.log(`[${type.toUpperCase()}]`, message);
+            if (type === 'error') statusDiv.classList.add('error');
+            if (type === 'success') statusDiv.classList.add('success');
+            console.log(`[${type}]`, message);
         }
 
         function showLoading(message) {
             statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
         }
 
-        // ========================================
-        // STEP 1: INITIATE OAUTH LOGIN
-        // ========================================
-        
-        loginBtn.addEventListener('click', () => {
-            console.log('=== Starting OAuth Flow ===');
+        // Test button click
+        loginBtn.addEventListener('click', function() {
+            console.log('=== Button Clicked! ===');
+            alert('Button clicked! Check console.');
+            
             console.log('Client ID:', CONFIG.clientId);
             console.log('Redirect URI:', CONFIG.redirectUri);
             
-            if (CONFIG.clientId === 'YOUR_CONSUMER_KEY_HERE') {
-                updateStatus('❌ Error: Please configure your Consumer Key in the HTML file', 'error');
-                return;
-            }
-            
-            showLoading('Redirecting to Salesforce login...');
+            showLoading('Redirecting to Salesforce...');
             
             const authUrl = `${CONFIG.instanceUrl}/services/oauth2/authorize?` +
                 `client_id=${encodeURIComponent(CONFIG.clientId)}&` +
@@ -202,44 +161,103 @@
             
             console.log('OAuth URL:', authUrl);
             
-            // Redirect to Salesforce OAuth page
-            window.location.href = authUrl;
+            // Redirect to Salesforce
+            setTimeout(() => {
+                window.location.href = authUrl;
+            }, 500);
         });
 
-        // ========================================
-        // STEP 2: HANDLE OAUTH CALLBACK
-        // ========================================
-        
+        // Handle OAuth callback
         async function handleOAuthCallback() {
-            console.log('=== Checking for OAuth callback ===');
-            
-            // Parse URL hash for OAuth response
             const hash = window.location.hash.substring(1);
             
             if (!hash) {
-                console.log('No OAuth callback detected');
-                updateStatus('Click "Login to Salesforce" to begin', 'info');
+                console.log('No OAuth callback');
                 return;
             }
             
-            console.log('OAuth callback detected');
+            console.log('=== OAuth Callback Detected ===');
+            loginBtn.style.display = 'none';
             
             const params = new URLSearchParams(hash);
             const accessToken = params.get('access_token');
-            const instanceUrl = params.get('instance_url');
             
             if (!accessToken) {
-                console.error('No access token in callback');
-                updateStatus('❌ Authentication failed: No access token received', 'error');
+                updateStatus('❌ No access token received', 'error');
                 return;
             }
             
             console.log('✓ Access token received');
-            console.log('Instance URL:', instanceUrl);
-            
-            // Hide login button
-            loginBtn.style.display = 'none';
+            showLoading('Getting frontdoor URL...');
             
             try {
-                // Step 3: Get Frontdoor URL
-                showLoading('Generating frontdoor URL...');
+                const response = await fetch(
+                    `${CONFIG.instanceUrl}/services/oauth2/lightningoutsingleaccess`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            access_token: accessToken,
+                            lightning_out_app_id: CONFIG.lightningOutAppId
+                        })
+                    }
+                );
+                
+                console.log('Frontdoor response:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Frontdoor data:', data);
+                
+                showLoading('Loading Lightning Out app...');
+                
+                // Load Lightning Out script dynamically
+                const script = document.createElement('script');
+                script.src = `${CONFIG.instanceUrl}/lightning-out/lightning-out-2.0.js`;
+                script.onload = () => {
+                    console.log('✓ Lightning Out script loaded');
+                    initLightningOut(data.frontdoor_uri);
+                };
+                script.onerror = () => {
+                    updateStatus('❌ Failed to load Lightning Out script', 'error');
+                };
+                document.body.appendChild(script);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function initLightningOut(frontdoorUrl) {
+            appContainer.innerHTML = `
+                <lightning-out-application 
+                    id="app"
+                    components="c-flow-wrapper"
+                    frontdoor-url="${frontdoorUrl}">
+                </lightning-out-application>
+                <c-flow-wrapper flow-api-name="Field_Ops_Request"></c-flow-wrapper>
+            `;
+            
+            const app = document.getElementById('app');
+            app.addEventListener('lo.application.ready', () => {
+                console.log('✓ App ready!');
+                updateStatus('✅ Flow loaded successfully!', 'success');
+            });
+            
+            app.addEventListener('lo.application.error', (e) => {
+                console.error('App error:', e.detail);
+                updateStatus(`❌ ${e.detail.message}`, 'error');
+            });
+        }
+
+        // Initialize
+        console.log('=== Page Ready ===');
+        console.log('Button element:', loginBtn);
+        handleOAuthCallback();
+    </script>
+</body>
+</html>
