@@ -80,6 +80,17 @@
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
         
+        .debug-info {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        
         #appContainer {
             margin-top: 30px;
             min-height: 400px;
@@ -109,11 +120,15 @@
         
         <button id="loginBtn" class="login-btn">Login to Salesforce</button>
         
+        <div id="debugInfo" class="debug-info" style="display:none;"></div>
+        
+        <h2 style="margin-top: 30px; color: #032d60;">Lightning Component Below:</h2>
+        
         <div id="appContainer"></div>
     </div>
 
     <script>
-        console.log('=== Script Started ===');
+        console.log('=== Page Loaded ===');
         
         const CONFIG = {
             instanceUrl: 'https://zayo--dev.sandbox.my.salesforce.com',
@@ -125,17 +140,28 @@
         const statusDiv = document.getElementById('status');
         const loginBtn = document.getElementById('loginBtn');
         const appContainer = document.getElementById('appContainer');
+        const debugInfo = document.getElementById('debugInfo');
+        
+        let appReady = false;
 
         function updateStatus(message, type = 'info') {
             statusDiv.textContent = message;
             statusDiv.className = '';
             if (type === 'error') statusDiv.classList.add('error');
             if (type === 'success') statusDiv.classList.add('success');
-            console.log(`[${type}]`, message);
+            console.log(`[${type.toUpperCase()}]`, message);
         }
 
         function showLoading(message) {
             statusDiv.innerHTML = `<span class="spinner"></span> ${message}`;
+        }
+        
+        function updateDebugInfo(data) {
+            debugInfo.style.display = 'block';
+            debugInfo.textContent = `Debug Info:
+isAuthenticated: ${!!data.accessToken}
+frontdoorUrl: ${JSON.stringify(data.frontdoorUrl, null, 2)}
+appReady: ${appReady}`;
         }
 
         loginBtn.addEventListener('click', function() {
@@ -191,17 +217,25 @@
                 if (!response.ok) {
                     const text = await response.text();
                     console.error('Frontdoor error:', text);
-                    throw new Error(`Frontdoor failed: ${response.status}`);
+                    throw new Error(`HTTP ${response.status}`);
                 }
                 
                 const data = await response.json();
-                console.log('✓ Frontdoor URL received');
-                console.log('Frontdoor URI:', data.frontdoor_uri);
+                console.log('✓ Frontdoor URL received:', data);
                 
-                showLoading('Loading Lightning Out application...');
+                // Update debug info
+                updateDebugInfo({
+                    accessToken: accessToken,
+                    frontdoorUrl: data
+                });
                 
-                // Create Lightning Out application using Web Components
+                updateStatus('✓ Authenticated', 'success');
+                showLoading('Loading Lightning component...');
+                
+                // Create Lightning Out application - Henry's approach
                 appContainer.innerHTML = `
+                    <p style="color: #666; margin-bottom: 15px;">this is from salesforce</p>
+                    <h3 style="margin-bottom: 20px; color: #032d60;">Field Ops Request</h3>
                     <lightning-out-application 
                         id="loApp"
                         components="c-flow-wrapper"
@@ -210,53 +244,35 @@
                     <c-flow-wrapper flow-api-name="Field_Ops_Request"></c-flow-wrapper>
                 `;
                 
-                // Wait for custom elements to be defined
-                if (customElements.get('lightning-out-application')) {
-                    console.log('✓ lightning-out-application already defined');
-                    setupEventListeners();
-                } else {
-                    console.log('Waiting for lightning-out-application to be defined...');
-                    
-                    // Poll for the custom element to be defined
-                    const checkInterval = setInterval(() => {
-                        if (customElements.get('lightning-out-application')) {
-                            console.log('✓ lightning-out-application now defined');
-                            clearInterval(checkInterval);
-                            setupEventListeners();
-                        }
-                    }, 100);
-                    
-                    // Timeout after 10 seconds
-                    setTimeout(() => {
-                        clearInterval(checkInterval);
-                        if (!customElements.get('lightning-out-application')) {
-                            console.error('❌ lightning-out-application never defined');
-                            updateStatus('❌ Lightning Out web components not available', 'error');
-                            
-                            // Show helpful debug info
-                            console.log('Debug: This might mean Lightning Out 2.0 is not fully enabled');
-                            console.log('Debug: Or the frontdoor URL is not loading properly');
-                        }
-                    }, 10000);
-                }
+                console.log('✓ Lightning Out elements created');
                 
-                function setupEventListeners() {
-                    const loApp = document.getElementById('loApp');
-                    
-                    if (loApp) {
-                        loApp.addEventListener('lo.application.ready', function(e) {
-                            console.log('✓ Lightning Out application ready!', e);
-                            updateStatus('✅ Flow loaded successfully!', 'success');
-                        });
-                        
-                        loApp.addEventListener('lo.application.error', function(e) {
-                            console.error('❌ Lightning Out error:', e.detail);
-                            updateStatus(`❌ Error: ${e.detail.message || 'Unknown error'}`, 'error');
-                        });
-                        
-                        console.log('✓ Event listeners attached');
+                const loApp = document.getElementById('loApp');
+                
+                // Add event listeners
+                loApp.addEventListener('lo.application.ready', function(e) {
+                    console.log('✓✓✓ lo.application.ready fired!', e);
+                    appReady = true;
+                    updateDebugInfo({
+                        accessToken: accessToken,
+                        frontdoorUrl: data
+                    });
+                    updateStatus('✅ Application ready!', 'success');
+                });
+                
+                loApp.addEventListener('lo.application.error', function(e) {
+                    console.error('❌ lo.application.error:', e.detail);
+                    updateStatus(`❌ Error: ${e.detail.message}`, 'error');
+                });
+                
+                // Listen for all window messages (like Henry sees)
+                window.addEventListener('message', function(event) {
+                    if (event.data && event.data.type) {
+                        console.log('Window message:', event.data.type, event.data);
                     }
-                }
+                });
+                
+                console.log('✓ Event listeners attached');
+                updateStatus('Component loading...', 'info');
                 
             } catch (error) {
                 console.error('Error:', error);
