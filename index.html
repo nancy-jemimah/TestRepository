@@ -93,7 +93,23 @@
         
         #appContainer {
             margin-top: 30px;
-            min-height: 400px;
+            min-height: 600px;
+        }
+        
+        /* CRITICAL: Force iframe to have proper height */
+        lightning-out-application {
+            display: block;
+            min-height: 800px;
+        }
+        
+        lightning-out-application iframe {
+            min-height: 800px !important;
+            height: auto !important;
+        }
+        
+        c-flow-wrapper {
+            display: block;
+            min-height: 600px;
         }
         
         .spinner {
@@ -223,7 +239,6 @@ appReady: ${appReady}`;
                 const data = await response.json();
                 console.log('✓ Frontdoor URL received:', data);
                 
-                // Update debug info
                 updateDebugInfo({
                     accessToken: accessToken,
                     frontdoorUrl: data
@@ -232,7 +247,7 @@ appReady: ${appReady}`;
                 updateStatus('✓ Authenticated', 'success');
                 showLoading('Loading Lightning component...');
                 
-                // Create Lightning Out application - Henry's approach
+                // Create Lightning Out application
                 appContainer.innerHTML = `
                     <p style="color: #666; margin-bottom: 15px;">this is from salesforce</p>
                     <h3 style="margin-bottom: 20px; color: #032d60;">Field Ops Request</h3>
@@ -246,9 +261,26 @@ appReady: ${appReady}`;
                 
                 console.log('✓ Lightning Out elements created');
                 
+                // Add iframe height observer
+                setTimeout(() => {
+                    const iframe = document.querySelector('lightning-out-application iframe');
+                    if (iframe) {
+                        console.log('Found iframe, forcing height...');
+                        iframe.style.minHeight = '800px';
+                        iframe.style.height = '800px';
+                        
+                        // Watch for iframe content changes
+                        const observer = new MutationObserver(() => {
+                            iframe.style.minHeight = '800px';
+                            iframe.style.height = '800px';
+                        });
+                        
+                        observer.observe(iframe, { attributes: true, attributeFilter: ['style'] });
+                    }
+                }, 1000);
+                
                 const loApp = document.getElementById('loApp');
                 
-                // Add event listeners
                 loApp.addEventListener('lo.application.ready', function(e) {
                     console.log('✓✓✓ lo.application.ready fired!', e);
                     appReady = true;
@@ -256,7 +288,7 @@ appReady: ${appReady}`;
                         accessToken: accessToken,
                         frontdoorUrl: data
                     });
-                    updateStatus('✅ Application ready!', 'success');
+                    updateStatus('✅ Flow loaded successfully!', 'success');
                 });
                 
                 loApp.addEventListener('lo.application.error', function(e) {
@@ -264,7 +296,6 @@ appReady: ${appReady}`;
                     updateStatus(`❌ Error: ${e.detail.message}`, 'error');
                 });
                 
-                // Listen for all window messages (like Henry sees)
                 window.addEventListener('message', function(event) {
                     if (event.data && event.data.type) {
                         console.log('Window message:', event.data.type, event.data);
